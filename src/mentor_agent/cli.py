@@ -5,8 +5,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.table import Table
+
 from .agent import run_chat_session, run_query
 from .memory import TaskStore
+
+console = Console()
 
 
 def cmd_brief(args: argparse.Namespace, store: TaskStore) -> None:
@@ -16,7 +22,7 @@ def cmd_brief(args: argparse.Namespace, store: TaskStore) -> None:
         "rest in priority order. Flag anything overdue or at risk."
     )
     result = asyncio.run(run_query(prompt, store, user_name=args.name))
-    print(result)
+    console.print(Markdown(result))
     store.log_briefing(result)
 
 
@@ -25,7 +31,7 @@ def cmd_chat(args: argparse.Namespace, store: TaskStore) -> None:
         asyncio.run(run_chat_session(store, user_name=args.name))
         return
     result = asyncio.run(run_query(args.message, store, user_name=args.name))
-    print(result)
+    console.print(Markdown(result))
 
 
 def cmd_add_goal(args: argparse.Namespace, store: TaskStore) -> None:
@@ -43,11 +49,24 @@ def cmd_add_task(args: argparse.Namespace, store: TaskStore) -> None:
 def cmd_tasks(args: argparse.Namespace, store: TaskStore) -> None:
     tasks = store.list_tasks(status="open")
     if not tasks:
-        print("No open tasks.")
+        console.print("No open tasks.")
         return
+    table = Table(show_lines=False)
+    table.add_column("ID", style="dim")
+    table.add_column("P", justify="center")
+    table.add_column("Category")
+    table.add_column("Title")
+    table.add_column("Due")
     for t in tasks:
-        due = f" (due {t['due_date']})" if t["due_date"] else ""
-        print(f"[{t['id']}] P{t['priority']} {t['category']}: {t['title']}{due}")
+        priority_style = {1: "bold red", 2: "yellow"}.get(t["priority"], "white")
+        table.add_row(
+            t["id"],
+            f"[{priority_style}]P{t['priority']}[/{priority_style}]",
+            t["category"],
+            t["title"],
+            t["due_date"] or "-",
+        )
+    console.print(table)
 
 
 def cmd_done(args: argparse.Namespace, store: TaskStore) -> None:

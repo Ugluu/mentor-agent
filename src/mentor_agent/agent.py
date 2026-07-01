@@ -15,8 +15,12 @@ from claude_agent_sdk import (
     query,
     tool,
 )
+from rich.console import Console
+from rich.markdown import Markdown
 
 from .memory import TaskStore
+
+console = Console()
 
 SYSTEM_PROMPT = """You are {name}'s personal mentor: a direct, knowledgeable advisor on \
 career and business strategy. {name} is based in London, working on advancing their career \
@@ -121,5 +125,5 @@ async def run_chat_session(store: TaskStore, user_name: str = "the user") -> Non
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
-                            print(block.text)
+                            console.print(Markdown(block.text))
             print()
