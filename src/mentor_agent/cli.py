@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from .agent import run_query
+from .agent import run_chat_session, run_query
 from .memory import TaskStore
 
 
@@ -21,6 +21,9 @@ def cmd_brief(args: argparse.Namespace, store: TaskStore) -> None:
 
 
 def cmd_chat(args: argparse.Namespace, store: TaskStore) -> None:
+    if args.message is None:
+        asyncio.run(run_chat_session(store, user_name=args.name))
+        return
     result = asyncio.run(run_query(args.message, store, user_name=args.name))
     print(result)
 
@@ -62,7 +65,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_chat = sub.add_parser("chat", help="Ask your mentor something")
-    p_chat.add_argument("message")
+    p_chat.add_argument(
+        "message", nargs="?", default=None,
+        help="One-off question. Omit to start an interactive, multi-turn chat.",
+    )
     p_chat.set_defaults(func=cmd_chat)
 
     p_goal = sub.add_parser("add-goal", help="Add a goal")

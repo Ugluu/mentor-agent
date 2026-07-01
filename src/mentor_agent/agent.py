@@ -6,8 +6,11 @@ from datetime import date
 from typing import Any
 
 from claude_agent_sdk import (
+    AssistantMessage,
     ClaudeAgentOptions,
+    ClaudeSDKClient,
     ResultMessage,
+    TextBlock,
     create_sdk_mcp_server,
     query,
     tool,
@@ -96,3 +99,27 @@ async def run_query(prompt: str, store: TaskStore, user_name: str = "the user") 
         if isinstance(message, ResultMessage) and message.subtype == "success":
             result_text = message.result
     return result_text
+
+
+async def run_chat_session(store: TaskStore, user_name: str = "the user") -> None:
+    """Interactive, multi-turn chat that keeps context between messages."""
+    options = build_options(store, user_name=user_name)
+    print("Chat started — type 'exit' or 'quit' to leave.\n")
+    async with ClaudeSDKClient(options=options) as client:
+        while True:
+            try:
+                user_input = input("> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
+            if not user_input:
+                continue
+            if user_input.lower() in {"exit", "quit"}:
+                break
+            await client.query(user_input)
+            async for message in client.receive_response():
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            print(block.text)
+            print()
